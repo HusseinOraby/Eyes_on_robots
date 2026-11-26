@@ -196,3 +196,7 @@ footer p { max-width: 760px; margin: 0 auto; }
 .media.tall { aspect-ratio: 9 / 16; }
 .videos.stack { grid-template-columns: minmax(0, 980px); gap: 2.4rem; }
 @media (max-width: 760px) { .demo { grid-template-columns: 1fr; } .demo .clip { max-width: 340px; } }
+
+.videos.one { grid-template-columns: minmax(0, 380px); }
+.videos.one .media { aspect-ratio: 9 / 16; }
+.media.tall { aspect-ratio: 9 / 16; }
