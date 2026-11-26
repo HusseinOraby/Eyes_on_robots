@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eyes on Robots: Multi-Robot Control from AR Smart Glasses</title>
+<meta name="description" content="Eyes on Robots: control a fleet of ROS 2 robots with an on-device language model running on stand-alone, multilingual AR smart glasses.">
+<meta property="og:title" content="Eyes on Robots">
+<meta property="og:description" content="Multi-robot system control via an on-device language model on a multimodal, multilingual AR smart glasses.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/css/style.css">
+</head>
+<body>
+
+<header class="lab-header">
+  <img src="static/images/banner.png" alt="Jeonbuk National University and the Center for AI &amp; e-Mobility (CAiM) logos">
+</header>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <h1>Eyes on Robots</h1>
+      <p class="subtitle">Multi-robot system control via an on-device language model on a multimodal, multilingual AR smart glasses</p>
+      <p class="authors">
+        <span><a href="mailto:hussein.m.oraby@gmail.com">Hussein Oraby</a><sup>1</sup></span>
+        <span><a href="mailto:deokjlee@jbnu.ac.kr">Deok Jin Lee</a><sup>2</sup></span>
+      </p>
+      <!-- To link the lab name, wrap it like this: <a href="https://YOUR-LAB-URL" target="_blank" rel="noopener">Center for Autonomous Intelligent Mobility (CAIM)</a> -->
+      <p class="affil"><sup>1,2</sup>Department of Mechanical Design Engineering, Jeonbuk National University, and Center for Autonomous Intelligent Mobility (CAIM)</p>
+      <p class="venue">Presented at the KSME conference, 13 November 2026</p>
+      <a class="btn" href="#experiments">Watch the experiments</a>
+    </div>
+    <div class="hero-media">
+      <video id="heroVideo" autoplay muted loop playsinline preload="auto" poster="static/images/poster.jpg">
+        <source src="static/videos/poster-animation.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+</section>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#abstract">Abstract</a>
+  <a href="#experiments">Experiments</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#command">Voice to command</a>
+  <a href="#model">Model</a>
+  <a href="#control">Motion control</a>
+  <a href="#safety">Safety</a>
+  <a href="#limits">Limitations</a>
+</nav>
+
+<main>
+
+<!-- ABSTRACT -->
+<section id="abstract" class="sec">
+  <div class="wrap">
+    <h2>Abstract</h2>
+    <div class="prose">
+      <p class="lead">Eyes on Robots is a stand-alone, voice- and gesture-driven interface for monitoring and commanding a fleet of ROS 2 robots from AR smart glasses. Its language understanding runs on the glasses themselves, so the core interaction is designed to work without a cloud connection.</p>
+      <p>A fine-tuned Gemma 3 model (270 M parameters, quantised to INT8) runs on INMO Air3 glasses and turns a spoken command into a structured JSON command for a chosen robot. Speech is converted to text and translated offline with Google ML Kit, so operators can speak in their own language. A PD controller with odometry feedback runs on the glasses and drives bounded distance and rotation moves. An emergency stop and a heartbeat watchdog protect the fleet.</p>
+      <p>The system was validated on hardware with a Scout 2.0 ground robot and a DJI Tello drone.</p>
+    </div>
+
+    <dl class="numbers">
+      <div><dt>On-device model</dt><dd>270 M<small>parameters, Gemma 3, INT8</small></dd></div>
+      <div><dt>Command to robot start</dt><dd>3.7 s<small>Qwen2.5-0.5B: 7.6 s</small></dd></div>
+      <div><dt>PD motion accuracy</dt><dd>97% / 93%<small>linear / angular</small></dd></div>
+      <div><dt>Fleet size</dt><dd>up to 20<small>ROS 2 robots monitored</small></dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- WHAT IS NEW -->
+<section class="sec tint">
+  <div class="wrap">
+    <h2>What is new</h2>
+    <ol class="contrib">
+      <li><h3>A language model on the glasses</h3><p>The first implementation of an offline, on-device language model on stand-alone AR smart glasses for controlling a multi-robot system.</p></li>
+      <li><h3>Fleet-level control</h3><p>One interface monitors up to 20 ROS 2 robots. Each command names the robot it is for, for example a ground robot or a drone.</p></li>
+      <li><h3>Speak your own language</h3><p>A wake word (&ldquo;Hey Vero&rdquo;) starts listening, offline translation handles non-English speech, and hand gestures and manual controls are available too.</p></li>
+      <li><h3>Safe by design</h3><p>An emergency button and a 5 Hz connection watchdog stop the robots, and land the drones if the link is not restored within 3 seconds.</p></li>
+    </ol>
+
+    <h3 class="gap-h">How it differs from earlier approaches</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th scope="col">Approach</th><th scope="col">Examples</th><th scope="col">Key limitation</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Handheld and screen-based teleoperation</th><td>Joysticks, wearable sensors, ground-station apps</td><td>Occupies the operator's hands; typically controls one robot at a time.</td></tr>
+          <tr><th scope="row">Language and vision&ndash;language models</th><td>SayCan (2022), RT-2 (2023), VLA surveys</td><td>Large models often depend on cloud services or dedicated GPU hardware.</td></tr>
+          <tr><th scope="row">VR/AR interfaces for robots</th><td>R&uuml;cker (2020), Dierks (2020), Xu et al. (2025)</td><td>Mostly single-robot and focused on vision or gestures; not a stand-alone device with on-device language understanding.</td></tr>
+          <tr><th scope="row">Our earlier work</th><td><em>Eyes on the Robot</em> (IICC 2026)</td><td>Cloud-based Claude through a Flask server; limited to one robot.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="callout"><strong>The gap.</strong> No known system combines lightweight, stand-alone AR glasses with on-device language understanding for fleet-level robot control.</p>
+  </div>
+</section>
+
+<!-- EXPERIMENTS -->
+<section id="experiments" class="sec">
+  <div class="wrap">
+    <h2>Experiments</h2>
+    <div class="prose">
+      <p>The system was tested on real robots. Click a video to pause or play it.</p>
+    </div>
+
+    <h3>A drone and a ground robot, commanded from the glasses</h3>
+    <div class="prose">
+      <p>The drone flies above the ground robot and the two move forward together. The video is sped up.</p>
+    </div>
+    <div class="videos one">
+      <figure class="clip">
+        <div class="media" data-file="static/videos/demo-drone-ground.mp4"><video muted loop playsinline preload="metadata"><source src="static/videos/demo-drone-ground.mp4" type="video/mp4"></video></div>
+        <figcaption><strong>Drone and ground robot</strong><span>Both robots controlled from the AR glasses</span></figcaption>
+      </figure>
+    </div>
+
+    <h3>The operator&rsquo;s view</h3>
+    <div class="split">
+      <div>
+        <p>The operator wears the glasses and gives voice commands. The robots receive them over ROS Bridge, so there is no controller to hold and the operator's hands stay free.</p>
+        <div class="gear">
+          <figure><img src="static/images/scout-2.jpg" alt="Scout 2.0 ground robot"><figcaption><strong>Scout 2.0</strong><span>ground robot</span></figcaption></figure>
+          <figure><img src="static/images/dji-tello.jpg" alt="DJI Tello drone"><figcaption><strong>DJI Tello</strong><span>drone</span></figcaption></figure>
+          <figure><img src="static/images/glasses-specs.jpg" alt="INMO Air3 smart glasses specifications: Snapdragon octa-core, 8 GB RAM, 128 GB ROM, Android, front RGB camera, omni microphone, Wi-Fi and Bluetooth, binocular AR display"><figcaption><strong>INMO Air3</strong><span>stand-alone AR glasses</span></figcaption></figure>
+        </div>
+      </div>
+      <figure class="portrait">
+        <img src="static/images/operator-with-glasses.jpg" alt="An operator wearing the AR smart glasses, controlling a ground robot and a drone in a parking lot">
+        <figcaption>Controlling a ground robot and a drone with the glasses.</figcaption>
+      </figure>
+    </div>
+
+    <h3>Hardware experiment and app configuration</h3>
+    <div class="prose">
+      <p>The glasses connect to each robot through its ROS Bridge address, and the CAIM SG app then sends the commands to the selected robot.</p>
+    </div>
+    <div class="videos two">
+      <figure class="clip">
+        <div class="media" data-file="static/videos/experiment-two-robots.mp4"><video muted loop playsinline preload="metadata" poster="static/images/poster-hardware.jpg"><source src="static/videos/experiment-two-robots.mp4" type="video/mp4"></video></div>
+        <figcaption><strong>Experiment with two robots</strong><span>Scout 2.0 and DJI Tello</span></figcaption>
+      </figure>
+      <figure class="clip">
+        <div class="media" data-file="static/videos/app-configuration.mp4"><video muted loop playsinline preload="metadata" poster="static/images/poster-config.jpg"><source src="static/videos/app-configuration.mp4" type="video/mp4"></video></div>
+        <figcaption><strong>App configuration</strong><span>CAIM SG app set up for the two robots</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="architecture" class="sec tint">
+  <div class="wrap">
+    <h2>System architecture</h2>
+    <div class="prose">
+      <p>The AR app on the glasses handles speech, translation, language understanding and gestures. A ROS Bridge host connects the glasses to every robot in the fleet, relays commands and status, and compresses the camera images the robots send back.</p>
+    </div>
+
+    <figure class="fig">
+      <img src="static/images/fig-architecture.png" alt="System architecture: the AR app on the glasses (speech-to-text, ML Kit translator, Gemma 3 270M, ROS commander, HTTP sender, gesture recognition, video stream manager) connected through a ROS bridge host to a fleet of ROS 2 robots, with a watchdog">
+      <figcaption>The AR app talks to the robot fleet through a ROS Bridge host. A watchdog receives a 5 Hz heartbeat from the glasses.</figcaption>
+    </figure>
+
+    <ol class="layers">
+      <li><h3>STT and ML translator layers</h3><p>Receive the voice command, convert it to text, and translate it into English if it is not English.</p></li>
+      <li><h3>AI layer (Gemma 3)</h3><p>Processes the natural command and converts it into JSON for the requested robot and action.</p></li>
+      <li><h3>ROS 2 commander layer</h3><p>Defines a structured format for robot commands, storing command type, value, unit and robot ID, so instructions are processed and executed consistently.</p></li>
+      <li><h3>ROS 2 bridge</h3><p>Runs on the robots in the fleet and connects the glasses to the matching robot over a WebSocket connection.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- VOICE TO COMMAND -->
+<section id="command" class="sec">
+  <div class="wrap">
+    <h2>From voice to a structured robot command</h2>
+    <div class="prose">
+      <p class="voice">&ldquo;Hey Vero, could you rotate the ground robot 30 degrees to the left?&rdquo;</p>
+    </div>
+
+    <ol class="steps">
+      <li><h3>Wake word</h3><p>&ldquo;Vero&rdquo; or &ldquo;Hey Vero&rdquo; activates listening.</p></li>
+      <li><h3>Speech to text</h3><p>Recognises the utterance.</p></li>
+      <li><h3>Language</h3><p>Translates to English if the input is not English.</p></li>
+      <li><h3>Gemma 3</h3><p>Classifies the intent and extracts the robot and the value.</p></li>
+      <li><h3>JSON</h3><p>Generates a structured command object.</p></li>
+      <li><h3>RosCommand</h3><p>Parses the fields into a RosCommand object.</p></li>
+    </ol>
+
+    <div class="cols three">
+      <div>
+        <h3>Gemma output</h3>
+        <pre><code>{
+  "type": "rotate_left",
+  "robot": 1,
+  "value": 30,
+  "unit": "degrees"
+}</code></pre>
+      </div>
+      <div>
+        <h3>RosCommand parsing</h3>
+        <pre><code>type  &rarr; ROTATE_LEFT
+robot &rarr; 1 (target robot)
+value &rarr; 30.0
+unit  &rarr; degrees
+
+RosCommand(type, value,
+           unit, robot)</code></pre>
+      </div>
+      <div>
+        <h3>Command types</h3>
+        <p><strong>Motion:</strong> <code>move_forward</code>, <code>move_backward</code>, <code>move_distance</code>, <code>rotate_left</code>, <code>rotate_right</code>, <code>rotate_angle</code>, <code>stop</code></p>
+        <p><strong>Interface:</strong> <code>show_status</code>, <code>camera_on</code>, <code>camera_off</code>, <code>manual_activate</code>, <code>manual_deactivate</code>, <code>set_speed</code></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODEL -->
+<section id="model" class="sec tint">
+  <div class="wrap">
+    <h2>Training the on-device model</h2>
+    <div class="prose">
+      <p>Two small models were fine-tuned on the same dataset, using the same prompt and examples: Qwen2.5-0.5B and Gemma 3 270M. Both were quantised to INT8 for deployment and evaluated on the same system. The prompt tells the model: &ldquo;You are a robot command classifier. Output one JSON object.&rdquo;</p>
+    </div>
+
+    <ol class="steps four">
+      <li><h3>Dataset</h3><p>Fixed prompt plus command examples.</p></li>
+      <li><h3>Fine-tune</h3><p>Qwen2.5-0.5B and Gemma 3 270M.</p></li>
+      <li><h3>JSON output</h3><p>Structured robot command fields.</p></li>
+      <li><h3>RosCommand</h3><p>Parse the fields and build the ROS 2 command.</p></li>
+    </ol>
+
+    <div class="cols">
+      <div>
+        <h3>Natural language to JSON</h3>
+        <p class="ex">&ldquo;Move forward 2 meters&rdquo; for Robot 1</p>
+        <pre><code>{"type":"move_forward","robot":1,
+ "value":2,"unit":"meters"}</code></pre>
+        <p class="ex">&ldquo;Turn left 90 degrees&rdquo; for Robot 2</p>
+        <pre><code>{"type":"rotate_left","robot":2,
+ "value":90,"unit":"degrees"}</code></pre>
+      </div>
+      <div>
+        <h3>Model comparison</h3>
+        <div class="meters" role="group" aria-label="Held-out evaluation accuracy">
+          <p class="m-title">Held-out evaluation accuracy (reported)</p>
+          <div class="meter"><span class="m-label">Gemma 3 270M</span><span class="m-bar"><i data-w="91.34"></i></span><span class="m-val">91.34%</span></div>
+          <div class="meter alt"><span class="m-label">Qwen2.5-0.5B</span><span class="m-bar"><i data-w="92.67"></i></span><span class="m-val">92.67%</span></div>
+        </div>
+        <div class="meters" role="group" aria-label="Time from command to robot start">
+          <p class="m-title">Command issued to robot start (bar scale 0&ndash;8 s)</p>
+          <div class="meter"><span class="m-label">Gemma 3 270M</span><span class="m-bar"><i data-w="46.25"></i></span><span class="m-val">3.7 s</span></div>
+          <div class="meter alt"><span class="m-label">Qwen2.5-0.5B</span><span class="m-bar"><i data-w="95"></i></span><span class="m-val">7.6 s</span></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="callout"><strong>Selection.</strong> Gemma 3 270M was chosen because its accuracy is comparable to Qwen2.5-0.5B (91.34% against 92.67%) while the robot starts moving in about half the time.</p>
+
+    <h3>Training and evaluation evidence</h3>
+    <div class="evidence">
+      <figure class="fig">
+        <img src="static/images/training-curves.png" alt="Training and evaluation loss curves for Qwen2.5-0.5B and Gemma 3 270M">
+        <figcaption>Training and evaluation loss curves for both models.</figcaption>
+      </figure>
+      <figure class="fig">
+        <img src="static/images/per-field-accuracy.png" alt="Per-field accuracy on the held-out set for type, value, unit, robot and exact match">
+        <figcaption>Per-field accuracy on the held-out set: type, value, unit, robot and exact match.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- MOTION CONTROL -->
+<section id="control" class="sec">
+  <div class="wrap">
+    <h2>Closed-loop motion control on the glasses</h2>
+    <div class="prose">
+      <p>The glasses run the motion controller themselves. After the command is parsed, a bounded PD controller moves the selected robot a set distance or turns it by a set angle, using the robot's odometry as feedback.</p>
+    </div>
+
+    <ol class="steps five">
+      <li><h3>RosBridgeClient</h3><p>Receives the RosCommand and selects the robot ID.</p></li>
+      <li><h3>PD controller</h3><p>Bounded distance or angle control on the glasses.</p></li>
+      <li><h3>ROS topics</h3><p>Publishes a Twist message to the robot's configured topic.</p></li>
+      <li><h3>WebSocket</h3><p>Connects to ws://&lt;robot-IP&gt;:9090 using the ROSBridge protocol.</p></li>
+      <li><h3>Robot ROSBridge</h3><p>Receives the message and forwards it into ROS 2.</p></li>
+    </ol>
+
+    <h3>The control loop</h3>
+    <ul class="loop" aria-label="Control loop blocks">
+      <li><strong>Reference</strong><span>target distance or heading r(t)</span></li>
+      <li><strong>Error</strong><span>e(t) = r(t) &minus; y(t)</span></li>
+      <li><strong>PD control and saturation</strong><span>u(t) = K<sub>p</sub>&middot;e(t), clipped to &plusmn;v<sub>max</sub> and &plusmn;&omega;<sub>max</sub></span></li>
+      <li><strong>cmd_vel</strong><span>linear and angular velocity command</span></li>
+      <li><strong>Robot base</strong><span>moves the robot</span></li>
+      <li><strong>Odometry /odom</strong><span>measured pose and velocity, fed back as y(t)</span></li>
+    </ul>
+    <p class="note">Nominal loop rate: 12.5 Hz. The motion stops at the target tolerance or when a timeout occurs.</p>
+
+    <div class="meters wide" role="group" aria-label="Measured PD controller accuracy">
+      <p class="m-title">Measured PD controller accuracy, Scout 2.0 (robot ID 1)</p>
+      <div class="meter"><span class="m-label">Linear motion</span><span class="m-bar"><i data-w="97"></i></span><span class="m-val">97%</span></div>
+      <div class="meter alt"><span class="m-label">Angular motion</span><span class="m-bar"><i data-w="93"></i></span><span class="m-val">93%</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- SAFETY -->
+<section id="safety" class="sec tint">
+  <div class="wrap">
+    <h2>System safety</h2>
+    <div class="prose">
+      <p>Two independent safeguards protect the connected fleet.</p>
+    </div>
+    <div class="cols safety">
+      <div class="card">
+        <h3>Emergency button</h3>
+        <p>A manual emergency stop is always available to the operator. When pressed, it sends zero-velocity commands to all connected robots.</p>
+      </div>
+      <div class="card">
+        <h3>Connection watchdog</h3>
+        <p>The glasses send a heartbeat to the ROS 2 bridge at 5 Hz, once every 0.2 s. The watchdog monitors the link continuously.</p>
+        <ol class="mini">
+          <li><strong>Connection lost.</strong> The watchdog detects a missing heartbeat from the glasses.</li>
+          <li><strong>Stop all robots.</strong> It immediately sends zero velocity to every connected robot.</li>
+          <li><strong>Land drones.</strong> If the connection is not restored within 3 seconds, it sends LAND to the drones in the fleet.</li>
+        </ol>
+      </div>
+    </div>
+    <p class="note">Safety principle: stop ground robots immediately; start landing the drones if the link stays unavailable.</p>
+  </div>
+</section>
+
+<!-- LIMITATIONS -->
+<section id="limits" class="sec">
+  <div class="wrap">
+    <h2>Limitations and future work</h2>
+
+    <h3>Limitations</h3>
+    <ul class="plain">
+      <li><strong>Wi-Fi only.</strong> The system currently connects over Wi-Fi, which is not suitable for long distances.</li>
+      <li><strong>One robot at a time.</strong> A command cannot yet be assigned to two or more robots at the same time; commands have to be given one by one.</li>
+    </ul>
+
+    <h3>Future work</h3>
+    <div class="prose">
+      <p><strong>Point and go.</strong> The operator will point a finger at any target point on the robot's live camera view and say &ldquo;Hey Vero, move the robot there.&rdquo;</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>Center for AI &amp; e-Mobility (CAiM), Department of Mechanical Design Engineering, Jeonbuk National University.</p>
+</footer>
+
+<script src="static/js/main.js?v=1"></script>
+</body>
+</html>
